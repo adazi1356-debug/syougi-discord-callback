@@ -18,7 +18,7 @@ button.secondary{background:#1f2937}
 <div class="box">
 <h1>Discord OAuth Callback</h1>
 <p>認証が終わると、このページに <strong>連携コード</strong> を作成します。ゲームへ戻って、<strong>ログイン設定 → Discord連携</strong> に貼り付けてください。</p>
-<p class="warn">今の FiveM 版は callback ページからゲームへ自動復帰しないため、<strong>下の連携コード</strong>を使います。</p>
+<p class="warn">まずはこの別窓からゲームへの<strong>自動反映</strong>を試します。戻らない時だけ、下の連携コードを使ってください。</p>
 <div class="row">
 <button id="copyBtn" type="button">連携コードをコピー</button>
 <button id="copyUrlBtn" class="secondary" type="button">URL 全体をコピー</button>
@@ -75,7 +75,15 @@ function updateUi(profile){
   const safePreview = Object.assign({}, payload, { note: 'access_token はページに表示しません。連携コードだけをゲームへ貼り付けてください。' });
   out.textContent = JSON.stringify(safePreview, null, 2);
   if (currentHandoffCode && window.opener && typeof window.opener.postMessage === 'function') {
-    try { window.opener.postMessage({ action: 'crossplayDiscordOauthCallback', handoffCode: currentHandoffCode, oauthResult: payload }, '*'); } catch (_) {}
+    try {
+      window.opener.postMessage({ action: 'crossplayDiscordOauthCallback', handoffCode: currentHandoffCode, oauthResult: payload }, '*');
+      const auto = document.createElement('p');
+      auto.id = 'autoState';
+      auto.className = 'ok';
+      auto.textContent = 'ゲーム側への自動反映を試しています。反映後はこの窓を閉じてください。';
+      document.querySelector('.box').insertBefore(auto, handoff);
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 900);
+    } catch (_) {}
   }
   copyText(currentHandoffCode || '').then((copied) => {
     const existing = document.getElementById('copiedState');
