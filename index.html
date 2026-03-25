@@ -29,6 +29,7 @@ button.secondary{background:#1f2937}
 </div>
 <script>
 function base64UrlEncodeUtf8(text){const bytes=new TextEncoder().encode(String(text||''));let binary='';bytes.forEach((value)=>{binary+=String.fromCharCode(value);});return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');}
+function buildFingerprint(text){const value=String(text||'');let hash=2166136261;for(let i=0;i<value.length;i+=1){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}return Math.abs(hash>>>0).toString(36);}
 async function copyText(text){const value=String(text||'');if(!value) return false;try{if(navigator?.clipboard?.writeText){await navigator.clipboard.writeText(value);return true;}}catch(_){}try{const temp=document.createElement('textarea');temp.value=value;temp.setAttribute('readonly','readonly');temp.style.position='fixed';temp.style.left='-9999px';document.body.appendChild(temp);temp.select();const ok=document.execCommand('copy');document.body.removeChild(temp);return !!ok;}catch(_){return false;}}
 async function fetchDiscordProfile(result){
   if(!result.access_token) return null;
@@ -42,7 +43,7 @@ async function fetchDiscordProfile(result){
 }
 const hash = window.location.hash || '';
 const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
-const result = {
+const oauthResult = {
   access_token: params.get('access_token') || '',
   token_type: params.get('token_type') || 'Bearer',
   expires_in: params.get('expires_in') || '',
@@ -53,17 +54,26 @@ const result = {
 const handoff = document.getElementById('handoff');
 const out = document.getElementById('out');
 let currentHandoffCode = '';
-function updateUi(profile){
-  const payload = Object.assign({}, result, {
-    discordUserId: String(profile?.id || ''),
+function buildHandoffPayload(profile){
+  const userId = String(profile?.id || '');
+  return {
+    discordUserId: userId,
     username: String(profile?.username || ''),
     globalName: String(profile?.global_name || ''),
     discriminator: String(profile?.discriminator || ''),
-    avatar: String(profile?.avatar || '')
-  });
-  currentHandoffCode = payload.access_token ? `DCOAUTH1.${base64UrlEncodeUtf8(JSON.stringify(payload))}` : '';
-  handoff.value = currentHandoffCode || 'access_token が見つかりませんでした。Discord 側のエラー表示がないか確認してください。';
-  out.textContent = JSON.stringify(payload, null, 2);
+    avatar: String(profile?.avatar || ''),
+    fingerprint: oauthResult.access_token ? buildFingerprint(oauthResult.access_token) : '',
+    scope: oauthResult.scope || '',
+    state: oauthResult.state || '',
+    source: 'github_callback_v225'
+  };
+}
+function updateUi(profile){
+  const payload = buildHandoffPayload(profile);
+  currentHandoffCode = payload.discordUserId || payload.fingerprint ? `DCOAUTH1.${base64UrlEncodeUtf8(JSON.stringify(payload))}` : '';
+  handoff.value = currentHandoffCode || 'Discord 利用者情報を作れませんでした。認証をやり直してください。';
+  const safePreview = Object.assign({}, payload, { note: 'access_token はページに表示しません。連携コードだけをゲームへ貼り付けてください。' });
+  out.textContent = JSON.stringify(safePreview, null, 2);
   if (currentHandoffCode && window.opener && typeof window.opener.postMessage === 'function') {
     try { window.opener.postMessage({ action: 'crossplayDiscordOauthCallback', handoffCode: currentHandoffCode, oauthResult: payload }, '*'); } catch (_) {}
   }
@@ -79,7 +89,7 @@ function updateUi(profile){
     }
   });
 }
-fetchDiscordProfile(result).then(updateUi).catch(() => updateUi(null));
+fetchDiscordProfile(oauthResult).then(updateUi).catch(() => updateUi(null));
 document.getElementById('copyBtn').addEventListener('click', async () => { await copyText(currentHandoffCode || ''); });
 document.getElementById('copyUrlBtn').addEventListener('click', async () => { await copyText(window.location.href); });
 </script>
