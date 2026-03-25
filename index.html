@@ -1,1 +1,34 @@
-
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discord OAuth Callback</title>
+<style>
+body{font-family:sans-serif;background:#111827;color:#f9fafb;padding:24px;line-height:1.6}
+code,pre{background:#0f172a;color:#e5e7eb;padding:8px;border-radius:8px;display:block;overflow:auto}
+.box{max-width:880px;margin:0 auto;background:#1f2937;border:1px solid #374151;border-radius:16px;padding:20px}
+.ok{color:#86efac}.warn{color:#fbbf24}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>Discord OAuth Callback テンプレート</h1>
+<p>この HTML は、Discord の OAuth2 implicit grant で返ってくる URL フラグメントを確認するためのサンプルです。</p>
+<p class="warn">この版ではゲーム側への自動返却はまだ未実装です。将来はここからゲームへ戻す処理を追加します。</p>
+<pre id="out">読み込み中…</pre>
+</div>
+<script>
+const hash = window.location.hash || '';
+const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+const result = {
+  access_token: params.get('access_token') || '',
+  token_type: params.get('token_type') || '',
+  expires_in: params.get('expires_in') || '',
+  scope: params.get('scope') || '',
+  state: params.get('state') || ''
+};
+document.getElementById('out').textContent = JSON.stringify(result, null, 2);
+</script>
+</body>
+</html>
